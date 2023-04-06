@@ -33,6 +33,7 @@ export class UserController {
 
             const resExistAdmin = await UserModel.findOne({ email: objBody.email, pwd: objBody.pwd });
             if (resExistAdmin) {
+                if (resExistAdmin.status !== "Active") { return response.status(200).send({ success: false, message: "User Not Active, Please contact administrator.", data: null }); }
                 resExistAdmin.loginDate = new Date();
                 let resUpdate = basicUserInfo(await resExistAdmin.save().catch((err) => { throw err }));
                 resUpdate.token = this.env.helperFunction.getToken({
@@ -59,6 +60,7 @@ export class UserController {
             if (resTokenData && resTokenData._id) {
                 const resExistUser = await UserModel.findById(resTokenData._id);
                 if (resExistUser) {
+                    if (resExistUser.status !== "Active") { return response.status(200).send({ success: false, message: "User Not Active, Please contact administrator.", data: null }); }
                     return response.status(200).send({ success: true, message: "User detail found", data: resExistUser });
                 } else {
                     return response.status(200).send({ success: false, message: "No user found", data: null });
@@ -81,8 +83,8 @@ export class UserController {
             const filter = { email: { $ne: process.env.ADMIN_EMAIL } };
             const resUserCount = await UserModel.count(filter);
 
-            let rows = await UserModel.find(filter, {}, { skip: Skip, limit: Limit });
 
+            let rows = await UserModel.find(filter, {}, { skip: Skip, limit: Limit }).sort({ signupDate: -1 });
             const resUser = {
                 pagination: {
                     totalRecords: resUserCount,
@@ -165,9 +167,9 @@ export class UserController {
 
             const resExistUser = await UserModel.findById(objBody.id);
             if (resExistUser) {
-                resExistUser.status = objBody.status === UserStatus.Active ? UserStatus.Active : UserStatus.InActive;
+                resExistUser.status = objBody.status;
                 const resUpdate = await resExistUser.save().catch((err) => { throw err });
-                return response.status(200).send({ success: true, message: "User updated successfully", data: resUpdate });
+                return response.status(200).send({ success: true, message: `User ${objBody.status} successfully`, data: resUpdate });
             } else {
                 return response.status(200).send({ success: false, message: "No user found", data: null });
             }
