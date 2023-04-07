@@ -75,15 +75,37 @@ export class UserController {
 
     private getAllUser = async (request: Request, response: Response) => {
         try {
+            //#region Validate body
             const objBody = request.body;
             const Page = objBody.page || 1;
             const Limit = objBody.limit || 10;
+            const status = objBody.status || 'All';
+            const searchText = objBody.searchText || null;
             const Skip = (Page - 1) * Limit;
+            //#endregion
 
-            const filter = { email: { $ne: process.env.ADMIN_EMAIL } };
+            //#region Filter
+            let filter: any = {};
+            filter["$and"] = [{ email: { $ne: process.env.ADMIN_EMAIL } }];
+            if (status != "All") {
+                filter["$and"].push({ status: status })
+            }
+            if (searchText) {
+                let txtFilter: any = {};
+                txtFilter["$or"] = [
+                    {
+                        email: { $regex: '.*' + searchText + '.*' }
+                    },
+                    {
+                        name: { $regex: '.*' + searchText + '.*' }
+                    }
+                ]
+                filter["$and"].push(txtFilter)
+            }
+            //#endregion
+
+            //#region Execute query
             const resUserCount = await UserModel.count(filter);
-
-
             let rows = await UserModel.find(filter, {}, { skip: Skip, limit: Limit }).sort({ signupDate: -1 });
             const resUser = {
                 pagination: {
@@ -93,6 +115,8 @@ export class UserController {
                 },
                 rows: rows
             }
+            //#endregion
+
             return response.status(200).send({ success: true, message: "Users found.", data: resUser });
 
         } catch (error: any) {
@@ -132,7 +156,7 @@ export class UserController {
                 resUser = basicUserInfo(await resExistUser.save().catch((err) => { throw err }));
             } else {
                 const resSetting = await getSystemSetting();
-                const defaultCredit = resSetting.success ? resSetting.defaultcredit : 5;
+                const defaultCredit = resSetting?.success ? resSetting.setting?.defaultcredit || 5 : 5;
 
                 const instance = new UserModel();
                 instance.uid = objBody.uid;
