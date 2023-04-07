@@ -151,8 +151,9 @@ export class UserController {
             let resUser: any = null;
             if (resExistUser) {
                 resExistUser.name = objBody.name;
-                resExistUser.picture = objBody.picture;
                 resExistUser.loginDate = new Date();
+                const resPictureFile: any = await this.env.helperFunction.saveAvatar(objBody.picture, resExistUser.uid);
+                resExistUser.picture = resPictureFile.success ? resPictureFile.fileName : null;
                 resUser = basicUserInfo(await resExistUser.save().catch((err) => { throw err }));
             } else {
                 const resSetting = await getSystemSetting();
@@ -163,11 +164,15 @@ export class UserController {
                 instance.email = objBody.email;
                 instance.pwd = objBody.pwd || this.env.helperFunction.generateUUID();
                 instance.name = objBody.name;
-                instance.picture = objBody.picture;
+
                 instance.signupDate = new Date();
                 instance.loginDate = new Date();
                 instance.status = UserStatus.Active;
                 instance.credit = defaultCredit;
+
+                const resPictureFile: any = await this.env.helperFunction.saveAvatar(objBody.picture, instance.uid);
+                instance.picture = resPictureFile.success ? resPictureFile.fileName : null;
+
                 resUser = basicUserInfo(await instance.save().catch((err) => { throw err }));
             }
             resUser.token = this.env.helperFunction.getToken({
@@ -185,7 +190,6 @@ export class UserController {
     private updateUserStatus = async (request: Request, response: Response) => {
         try {
             const objBody = request.body;
-            console.log(objBody)
             if (!!!objBody.id || !!!objBody.status)
                 return response.status(200).send({ success: false, message: "Please provide required parameter" });
 

@@ -16,6 +16,7 @@ export class App {
         this.express = express();
         this.express.use(cors());
         this.express.use(express.json({ limit: '200mb' }));
+        this.express.use('/MediaUpload', express.static(__dirname + '/MediaUpload'));
         const UserCtrl = new UserController(this.env);
         const SettingCtrl = new SettingController(this.env);
         const DashboardCtrl = new DashboardController(this.env);
